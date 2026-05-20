@@ -39,7 +39,7 @@ def with_retry(
 
                     delay = backoff_factor * (2**attempt)
                     if jitter:
-                        delay *= random.uniform(0.5, 1.5)
+                        delay *= random.uniform(0.5, 1.5)  # nosec B311
 
                     logger.warning(
                         "Attempt %d/%d failed for %s: %s. Retrying in %.2fs",

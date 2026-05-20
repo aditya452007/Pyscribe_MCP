@@ -208,8 +208,8 @@ class SkillManager:
                         async with HttpClient(self._config.http) as client:
                             content = await client.get(item["download_url"])
                             description = self._extract_description_from_content(content)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug("Failed to extract description for %s: %s", skill_name, e)
 
         return SkillInfo(
             name=skill_name,

@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 import json
 import logging
-import subprocess
+import subprocess  # nosec B404
 import sys
 import tempfile
 from pathlib import Path
@@ -116,7 +116,7 @@ class SandboxValidator:
     def _check_lint(self, code: str) -> dict[str, Any]:
         issues: list[dict[str, Any]] = []
         try:
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603
                 [sys.executable, "-m", "ruff", "check", "--output-format=json", "-"],
                 input=code,
                 capture_output=True,
@@ -162,7 +162,7 @@ class SandboxValidator:
                 f.write(code)
                 temp_path = f.name
 
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603
                 [sys.executable, "-m", "mypy", temp_path, "--no-error-summary"],
                 capture_output=True,
                 text=True,

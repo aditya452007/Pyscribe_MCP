@@ -119,8 +119,8 @@ class GraphDB:
 
                 if node_ids:
                     placeholders = ",".join("?" * len(node_ids))
-                    cursor.execute(f"DELETE FROM edges WHERE source_id IN ({placeholders}) OR target_id IN ({placeholders})", node_ids + node_ids)
-                    cursor.execute(f"DELETE FROM nodes WHERE id IN ({placeholders})", node_ids)
+                    cursor.execute(f"DELETE FROM edges WHERE source_id IN ({placeholders}) OR target_id IN ({placeholders})", node_ids + node_ids)  # nosec B608
+                    cursor.execute(f"DELETE FROM nodes WHERE id IN ({placeholders})", node_ids)  # nosec B608
 
                 cursor.execute("DELETE FROM file_hashes WHERE file_path = ?", (file_path,))
         except sqlite3.Error as e:
