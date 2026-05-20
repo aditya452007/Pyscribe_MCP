@@ -11,7 +11,6 @@ from typing import Any
 from mcp.server import Server
 from mcp.types import CallToolResult, TextContent, Tool
 
-from pyscribe_code import __version__
 from pyscribe_code.managers.api_verifier import APIVerifier
 from pyscribe_code.managers.graph_analyzer import GraphAnalyzer
 from pyscribe_code.managers.sandbox_validator import SandboxValidator

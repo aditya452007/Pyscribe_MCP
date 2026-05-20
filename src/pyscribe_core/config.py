@@ -67,7 +67,7 @@ class PyScribeConfig:
 
     skill_sources: list[SkillSource] = field(default_factory=list)
     skill_aliases: dict[str, str] = field(default_factory=dict)
-    defaults: dict[str, str] = field(default_factory=dict)
+    default_values: dict[str, str] = field(default_factory=dict)
     http: HttpConfig = field(default_factory=HttpConfig)
 
     @classmethod
@@ -88,7 +88,7 @@ class PyScribeConfig:
         return cls(
             skill_sources=skill_sources,
             skill_aliases=skills.get("aliases", {}),
-            defaults=data.get("defaults", {}),
+            default_values=data.get("defaults", {}),
             http=HttpConfig(
                 timeout_seconds=http_data.get("timeout_seconds", 15),
                 max_retries=http_data.get("max_retries", 3),

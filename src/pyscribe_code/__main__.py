@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import signal
 import sys
@@ -76,10 +77,8 @@ async def run_server(config_path: Path, project_root: Path) -> None:
     for sig_name in ("SIGINT", "SIGTERM"):
         sig = getattr(signal, sig_name, None)
         if sig:
-            try:
+            with contextlib.suppress(NotImplementedError):
                 loop.add_signal_handler(sig, _signal_handler)
-            except NotImplementedError:
-                pass
 
     async with stdio_server() as (read_stream, write_stream):
         init_options = server.create_initialization_options()
@@ -87,16 +86,12 @@ async def run_server(config_path: Path, project_root: Path) -> None:
             server.run(read_stream, write_stream, init_options, raise_exceptions=True)
         )
 
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await shutdown_event.wait()
-        except asyncio.CancelledError:
-            pass
 
         server_task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await server_task
-        except asyncio.CancelledError:
-            pass
 
     logger.info("PyScribe Code server shut down gracefully")
 

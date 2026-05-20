@@ -4,7 +4,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/pyscribe.git
+git clone https://github.com/aditya452007/Pyscribe_MCP.git
 cd pyscribe
 
 # Create virtual environment
@@ -48,7 +48,7 @@ Create a `.pyscribe/config.yaml`:
 ```yaml
 skill_sources:
   - name: "default"
-    url: "https://github.com/your-org/skills"
+    url: "https://github.com/aditya452007/skills"
 
 http:
   timeout: 30
@@ -73,6 +73,7 @@ cache:
 ### Tool Parameters
 
 #### `analyze-codebase-graph`
+
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
 | `scope` | `string` | No | `"full"` | `full`, `file`, or `module` |
@@ -80,6 +81,7 @@ cache:
 | `force_rebuild` | `boolean` | No | `false` | Force rebuild cache |
 
 #### `analyze-impact`
+
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
 | `symbol` | `string` | **Yes** | - | Symbol name to analyze |
@@ -87,6 +89,7 @@ cache:
 | `max_depth` | `integer` | No | `3` | Transitive depth (1-5) |
 
 #### `sandbox-validate`
+
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
 | `code` | `string` | **Yes** | - | Python code to validate |
@@ -94,3 +97,4 @@ cache:
 | `python_version` | `string` | No | - | Target Python version |
 | `checks` | `array` | No | `["syntax","imports","lint","types"]` | Checks to run |
 | `dependencies` | `array` | No | - | Import names to verify |
+
