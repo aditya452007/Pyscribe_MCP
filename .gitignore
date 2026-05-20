@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.egg-info
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.log
+*.tmp
+*.bak
+
+# PyScribe runtime artifacts
+.agent/cache/
+.agent/skills/
+.agent/agent/journal.sqlite
+.agent/agent/journal.sqlite-shm
+.agent/agent/journal.sqlite-wal
+.agent/code/graph.sqlite
+.agent/code/graph.sqlite-shm
+.agent/code/graph.sqlite-wal
+.agent/code/docs.sqlite
+.agent/code/docs.sqlite-shm
+.agent/code/docs.sqlite-wal
+.pyscribe/
+
+# SQLite databases (runtime state)
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Test/debug artifacts
+test_project/
+critical_test*.py
+debug_*.py
+test_mcp_server.py
+test_pyscribe.py
+test-project/
