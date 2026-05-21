@@ -229,6 +229,25 @@ def _get_handler(name: str):
 
 
 async def handle_analyze_codebase_graph(ctx: CodeContext, args: dict[str, Any]) -> str:
+    """
+    Produce a human-readable report summarizing the codebase call graph built by the graph analyzer.
+    
+    Parameters:
+        ctx (CodeContext): Shared server context (injected; not documented further).
+        args (dict[str, Any]): Input options. Recognized keys:
+            - scope (str): Graph scope to build (default: "full").
+            - path (str): Optional file or directory path to limit the graph (empty string treated as none).
+            - force_rebuild (bool): Whether to force rebuilding the graph (default: False).
+            - language (str): Optional language filter passed to the graph builder (empty string treated as none).
+    
+    Returns:
+        str: A multi-line text report that includes total nodes and edges, and optionally:
+             - Top hotspots (most-called symbols) with symbol, type, file, and caller count.
+             - Module dependencies listing source -> target files with call counts.
+    
+    Raises:
+        PyScribeError: If the graph analyzer reports an error; marked recoverable.
+    """
     scope = args.get("scope", "full")
     path = args.get("path", "")
     force_rebuild = args.get("force_rebuild", False)
@@ -495,6 +514,26 @@ async def handle_list_installed_skills(ctx: CodeContext, args: dict[str, Any]) -
 
 
 async def handle_sandbox_validate(ctx: CodeContext, args: dict[str, Any]) -> str:
+    """
+    Validate provided source code in a sandbox and return a formatted validation report.
+    
+    Parameters:
+        ctx (CodeContext): Shared dependencies and validators used to perform validation.
+        args (dict[str, Any]): Input parameters. Recognized keys:
+            - code: (str) Source code to validate (required).
+            - file_path: (str) Optional file path used for context and language detection.
+            - language: (str) Optional explicit language ("python", "typescript", "javascript"); if omitted, language is inferred from file_path.
+            - python_version: (str) Optional Python version hint passed to the Python validator.
+            - checks: (Any) Optional list or configuration of checks to run.
+            - dependencies: (Any) Optional Python dependency specification for the Python validator.
+            - ts_config: (Any) Optional TypeScript configuration passed to the TypeScript validator.
+    
+    Returns:
+        str: A human-readable report including overall status, write permission, summary, per-check status (PASS/FAIL/WARN), and detailed issues with severity, optional line numbers, codes, and messages.
+    
+    Raises:
+        PyScribeError: If the required "code" parameter is missing (recoverable).
+    """
     code = args.get("code", "")
     file_path = args.get("file_path", "")
     language = args.get("language", "")
@@ -546,6 +585,15 @@ async def handle_sandbox_validate(ctx: CodeContext, args: dict[str, Any]) -> str
 
 
 def _detect_language_from_path(file_path: str) -> str:
+    """
+    Infer the programming language from a file path's extension.
+    
+    Parameters:
+        file_path (str): File path or name used to determine language. If empty, language defaults to "python".
+    
+    Returns:
+        language (str): `"typescript"` for `.ts`/`.tsx`, `"javascript"` for `.js`/`.jsx`, otherwise `"python"`.
+    """
     if not file_path:
         return "python"
     path = Path(file_path)

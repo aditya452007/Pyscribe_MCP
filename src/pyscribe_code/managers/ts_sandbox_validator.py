@@ -21,6 +21,12 @@ class TSSandboxValidator:
     """Validates TypeScript/JavaScript code before writing to disk."""
 
     def __init__(self, project_root: str | Path) -> None:
+        """
+        Initialize the validator with the repository/project root.
+        
+        Parameters:
+            project_root (str | Path): Path to the project root used to resolve local binaries and configuration; stored on the instance as a pathlib.Path.
+        """
         self._project_root = Path(project_root)
 
     def validate(
@@ -30,6 +36,23 @@ class TSSandboxValidator:
         checks: list[str] | None = None,
         ts_config: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        """
+        Run requested sandbox checks (syntax, lint, types) on TypeScript/JavaScript code and return an aggregated report.
+        
+        Parameters:
+            code (str): Source code to validate.
+            file_path (str | None): Optional filename used to choose file extension and display in the report. If omitted, "<unnamed>" is used in the returned report.
+            checks (list[str] | None): List of checks to run. Supported values: "syntax", "lint", "types". When omitted, defaults to ["syntax", "lint", "types"].
+            ts_config (dict[str, Any] | None): Optional TypeScript compiler configuration used for the "types" check; when omitted a sensible default tsconfig is generated.
+        
+        Returns:
+            dict[str, Any]: Aggregated validation report with keys:
+                - "file_path" (str): Provided file_path or "<unnamed>".
+                - "status" (str): Overall status: "pass", "warn", or "fail".
+                - "can_write" (bool): True when no check produced a "fail" status.
+                - "summary" (str): One-line summary like "All checks passed" or "<errors> error(s), <warnings> warning(s)".
+                - "results" (list[dict[str, Any]]): Per-check result objects produced by the individual check methods.
+        """
         if checks is None:
             checks = ["syntax", "lint", "types"]
 
@@ -67,6 +90,28 @@ class TSSandboxValidator:
         }
 
     def _check_syntax(self, code: str, file_path: str | None = None) -> dict[str, Any]:
+        """
+        Run a TypeScript/JavaScript syntax check on the provided code using the `tsc` compiler.
+        
+        Parameters:
+        	code (str): Source code to validate.
+        	file_path (str | None): Optional filename used to determine file extension for the temporary file; when omitted a default `.ts` suffix is used.
+        
+        Returns:
+        	result (dict): A report with keys:
+        		- "check": the string "syntax".
+        		- "status": one of "pass", "warn", or "fail".
+        		- "issues": a list of issue objects, each with:
+        			- "line" (int | None)
+        			- "column" (int | None)
+        			- "code" (str)
+        			- "message" (str)
+        			- "severity" ("error" or "warning")
+        		
+        Notes:
+        	- If the `tsc` binary is not available, the method returns a single warning issue indicating the check was skipped.
+        	- On execution failures or timeouts a single warning issue with code "SYNTAX_ERROR" is added.
+        """
         issues: list[dict[str, Any]] = []
         ext = self._get_extension(file_path)
 
@@ -111,6 +156,25 @@ class TSSandboxValidator:
         return {"check": "syntax", "status": status, "issues": issues}
 
     def _check_lint(self, code: str, file_path: str | None = None) -> dict[str, Any]:
+        """
+        Run ESLint on the provided code (using a project-local or global eslint) and return parsed lint issues.
+        
+        If an eslint executable cannot be found, returns a warning-level result indicating the lint check was skipped. When eslint runs and produces JSON output, each message is converted to an issue with `line`, `column`, `code` (rule id or "eslint"), `message`, and `severity` ("error" for severity 2, otherwise "warning"). On execution errors or timeouts a single warning-style issue is returned describing the failure. A temporary file is used for linting and is always cleaned up.
+        
+        Parameters:
+            file_path (str | None): Optional original file path used to choose the temporary file extension; if omitted a default extension is used.
+        
+        Returns:
+            dict: A result dictionary with keys:
+                - "check": always "lint"
+                - "status": "pass" if no issues, otherwise "warn"
+                - "issues": list of issue dicts, each containing:
+                    - "line" (int | None)
+                    - "column" (int | None)
+                    - "code" (str)
+                    - "message" (str)
+                    - "severity" ("error" | "warning")
+        """
         issues: list[dict[str, Any]] = []
 
         eslint = self._find_eslint()
@@ -169,6 +233,25 @@ class TSSandboxValidator:
         file_path: str | None = None,
         ts_config: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        """
+        Run a TypeScript type check on the provided code using a temporary tsconfig and return structured issues.
+        
+        Parameters:
+            code (str): Source code to type-check.
+            file_path (str | None): Optional filename hint used to choose an appropriate file extension for the temporary source file.
+            ts_config (dict[str, Any] | None): Optional tsconfig object to use instead of the default compiler options.
+        
+        Returns:
+            dict[str, Any]: A report with keys:
+                - `check` (str): The check name `"types"`.
+                - `status` (str): One of `"pass"`, `"warn"`, or `"fail"`.
+                - `issues` (list[dict]): A list of issue objects; each issue contains:
+                    - `line` (int | None)
+                    - `column` (int | None)
+                    - `code` (str)
+                    - `message` (str)
+                    - `severity` (str): `"error"` or `"warning"`.
+        """
         issues: list[dict[str, Any]] = []
 
         if not self._has_tsc():
@@ -228,6 +311,18 @@ class TSSandboxValidator:
         return {"check": "types", "status": status, "issues": issues}
 
     def _parse_tsc_line(self, line: str) -> dict[str, Any] | None:
+        """
+        Parse a single line of TypeScript compiler (tsc) output into a structured issue dictionary.
+        
+        Returns:
+            dict: An issue with keys:
+                - `line` (int | None): 1-based line number if present and numeric, otherwise `None`.
+                - `column` (int | None): 1-based column number if present and numeric, otherwise `None`.
+                - `code` (str): The source of the issue, always `"tsc"`.
+                - `message` (str): The message text extracted from the line (empty string if none found).
+                - `severity` (str): `"error"` when the line contains "error" (case-insensitive) and does not contain "warning"; otherwise `"warning"`.
+            None: If the line cannot be parsed into the expected tsc format.
+        """
         if "(" not in line or ")" not in line:
             return None
 
@@ -253,6 +348,15 @@ class TSSandboxValidator:
             return None
 
     def _get_extension(self, file_path: str | None) -> str:
+        """
+        Return the file extension to use for a temporary source file.
+        
+        Parameters:
+            file_path (str | None): Optional file path whose suffix will be used if it matches a supported TypeScript/JavaScript extension.
+        
+        Returns:
+            str: The suffix from `file_path` when it is one of the supported extensions (`.ts`, `.tsx`, `.js`, `.jsx`); otherwise `".ts"`.
+        """
         if file_path:
             path = Path(file_path)
             if path.suffix in TS_EXTENSIONS | JS_EXTENSIONS:
@@ -260,6 +364,12 @@ class TSSandboxValidator:
         return ".ts"
 
     def _has_tsc(self) -> bool:
+        """
+        Check whether the TypeScript compiler (`tsc`) is available locally or on PATH.
+
+        Returns:
+            True if a project-local `tsc` exists under `node_modules/.bin` or `tsc` is on PATH, False otherwise.
+        """
         local_tsc = self._project_root / "node_modules" / ".bin" / "tsc"
         if local_tsc.exists() and os.access(local_tsc, os.X_OK):
             return True
@@ -269,6 +379,14 @@ class TSSandboxValidator:
         return shutil.which("tsc") is not None
 
     def _find_eslint(self) -> str | None:
+        """
+        Resolve the eslint executable to use for linting.
+        
+        Checks for a globally available `eslint` on the PATH first; if not found, checks for a local project installation under `node_modules/.bin` and returns the first matching executable path.
+        
+        Returns:
+            str | None: The executable name or absolute path to `eslint` if found, otherwise `None`.
+        """
         if shutil.which("eslint"):
             return "eslint"
 

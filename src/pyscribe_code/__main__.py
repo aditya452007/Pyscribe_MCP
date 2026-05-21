@@ -40,6 +40,15 @@ def find_config(project_root: Path) -> Path:
 
 
 async def run_server(config_path: Path, project_root: Path) -> None:
+    """
+    Start and run the PyScribe Code MCP server using the provided configuration and project root.
+    
+    This function loads configuration from `config_path`, prepares agent directories under `project_root` (including code and skills storage), constructs and wires core services and validators into the server context, and runs the MCP server over stdio until a shutdown signal is received. It registers handlers for SIGINT and SIGTERM (when supported) to trigger graceful shutdown and ensures the server task is cancelled and awaited before returning.
+    
+    Parameters:
+        config_path (Path): Path to the PyScribe configuration YAML used to initialize services.
+        project_root (Path): Root directory used to locate and create agent subdirectories and persistent storage.
+    """
     config = PyScribeConfig.from_yaml(config_path)
     code_dir = project_root / ".agent" / "code"
     code_dir.mkdir(parents=True, exist_ok=True)

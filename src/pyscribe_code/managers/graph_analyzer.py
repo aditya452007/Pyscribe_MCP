@@ -19,6 +19,14 @@ class GraphAnalyzer:
     """Orchestrates graph building and impact analysis."""
 
     def __init__(self, project_root: str | Path, db_path: str | Path, language: str | None = None) -> None:
+        """
+        Initialize a GraphAnalyzer with project root, graph database, and optional target language.
+        
+        Parameters:
+            project_root (str | Path): Path to the project root directory to analyze.
+            db_path (str | Path): Path to the graph database file used for persistence.
+            language (str | None): Optional target language hint ("python", "typescript", or "javascript"); if omitted, language will be auto-detected when needed.
+        """
         self._project_root = Path(project_root)
         self._db = GraphDB(db_path)
         self._language = language
@@ -26,6 +34,18 @@ class GraphAnalyzer:
         self._ts_parser = TypeScriptASTParser()
 
     def _get_parser(self, language: str):
+        """
+        Selects the appropriate AST parser for the given language.
+        
+        Parameters:
+        	language (str): Language identifier; expected values are "python", "typescript", or "javascript".
+        
+        Returns:
+        	The parser instance corresponding to the requested language.
+        
+        Raises:
+        	LanguageDetectionError: If the language is not supported.
+        """
         if language == "python":
             return self._py_parser
         if language in ("typescript", "javascript"):
@@ -39,6 +59,20 @@ class GraphAnalyzer:
         force_rebuild: bool = False,
         language: str | None = None,
     ) -> dict[str, Any]:
+        """
+        Build or update the project analysis graph for a specified scope and persist results to the graph database.
+        
+        Selects the parser for the target language (argument, instance language, or auto-detected), optionally invalidates cached analyses when `force_rebuild` is true, parses files or directories according to `scope`, persists new analyses into the database, and returns graph statistics.
+        
+        Parameters:
+            scope (str): One of "full", "module", or "file" determining the unit to (re)build.
+            path (str | None): File or directory path used when `scope` is "file" or "module".
+            force_rebuild (bool): If true, invalidate cached analyses for the affected scope before parsing.
+            language (str | None): Explicit language hint ("python", "typescript", or "javascript"); if omitted, the analyzer's language or auto-detection is used.
+        
+        Returns:
+            dict[str, Any]: Graph statistics for the requested scope, or an error dict with an "error" message on invalid input (missing path, invalid scope, or similar).
+        """
         target_language = language or self._language or self._detect_language()
         self._language = target_language
         parser = self._get_parser(target_language)
@@ -85,6 +119,17 @@ class GraphAnalyzer:
         return self._graph_stats()
 
     def _parse_directory(self, parser, dir_path: Path, language: str) -> list:
+        """
+        Parse a directory of source files using the provided AST parser for the specified language.
+        
+        Parameters:
+            parser: An AST parser instance with a `parse_directory(Path)` method.
+            dir_path (Path): Path to the directory to parse.
+            language (str): Target language hint used to select parser behavior.
+        
+        Returns:
+            list: A list of file analysis results produced by the parser.
+        """
         if language == "python":
             return parser.parse_directory(dir_path)
         return parser.parse_directory(dir_path)
@@ -95,6 +140,19 @@ class GraphAnalyzer:
         change_type: str = "modify",
         max_depth: int = 3,
     ) -> dict[str, Any]:
+        """
+        Compute impact metrics for a code symbol and include its transitive dependents and related test files.
+        
+        Parameters:
+            symbol (str): Fully qualified name or identifier of the symbol to analyze.
+            change_type (str): Type of change to evaluate impact for (e.g., "modify", "delete"). Defaults to "modify".
+            max_depth (int): Maximum transitive depth to search for dependents. Defaults to 3.
+        
+        Returns:
+            impact (dict[str, Any]): Impact metrics returned by the database augmented with:
+                - "dependents" (list[dict]): Transitive dependent records up to `max_depth`.
+                - "test_files" (list[str]): Paths to test files that likely reference the affected symbols.
+        """
         impact = self._db.calculate_impact_ratio(symbol, change_type)
         dependents = self._db.find_transitive_dependents(symbol, max_depth)
         test_files = self._map_to_test_files([symbol] + [d["caller"] for d in dependents])
@@ -117,6 +175,17 @@ class GraphAnalyzer:
         }
 
     def _detect_language(self) -> str:
+        """
+        Detects the dominant language in the project by counting .py, .ts, and .js files.
+        
+        Ties are resolved by preferring Python first, then TypeScript over JavaScript.
+        
+        Returns:
+            str: One of 'python', 'typescript', or 'javascript' indicating the detected language.
+        
+        Raises:
+            LanguageDetectionError: If no Python, TypeScript, or JavaScript files are found.
+        """
         py_files = list(self._project_root.rglob("*.py"))
         ts_files = list(self._project_root.rglob("*.ts")) + list(self._project_root.rglob("*.tsx"))
         js_files = list(self._project_root.rglob("*.js")) + list(self._project_root.rglob("*.jsx"))
@@ -135,6 +204,14 @@ class GraphAnalyzer:
         return "javascript"
 
     def _check_cache_validity(self) -> bool:
+        """
+        Check whether a sample of project files for the configured or detected language are present in the cache.
+        
+        Checks up to 100 files of the target language (Python: `*.py`; TypeScript/JavaScript: extensions from the parser configuration) and returns `False` immediately if any checked file is not cached.
+        
+        Returns:
+            bool: `True` if all checked files have cached analysis, `False` otherwise.
+        """
         target_language = self._language or self._detect_language()
         if target_language == "python":
             files = list(self._project_root.rglob("*.py"))
@@ -149,6 +226,17 @@ class GraphAnalyzer:
         return True
 
     def _build_incremental(self, changed_files: list[str]) -> None:
+        """
+        Perform incremental rebuild of analyses for a list of changed source files.
+        
+        Determines the target language from the instance language or by auto-detection, then for each existing path in `changed_files` that matches the target language's file extensions, re-parses that file and replaces its analysis in the graph database. Paths that do not exist are skipped.
+        
+        Parameters:
+            changed_files (list[str]): Iterable of file paths to consider for incremental rebuild.
+        
+        Side effects:
+            Updates the graph database by removing and inserting the file analysis for each re-parsed file.
+        """
         target_language = self._language or self._detect_language()
         for file_path in changed_files:
             path = Path(file_path)
@@ -164,6 +252,19 @@ class GraphAnalyzer:
                 self._db.insert_file_analysis(analysis)
 
     def _map_to_test_files(self, affected_functions: list[str]) -> list[str]:
+        """
+        Map a list of affected function identifiers to likely test files that reference them.
+        
+        Scans common test directories ("tests", "test", "__tests__") under the project root and returns test file paths that reference any of the provided affected function names. The final component of each string in `affected_functions` (the text after the last dot) is used as the search target. Behavior depends on the detected or configured project language:
+        - Python: parses each candidate test file and matches `Name` or `Attribute` AST nodes against the target names.
+        - TypeScript/JavaScript: restricts to test-like filenames (e.g., starting with `test_`/`spec_` or ending with `.test.*`/`.spec.*`) and matches target names by simple substring search in the file text.
+        
+        Parameters:
+            affected_functions (list[str]): A list of function or symbol identifiers; only the last dot-separated segment of each entry is used for matching.
+        
+        Returns:
+            list[str]: A de-duplicated list of file paths (as strings) to test files that likely reference the affected functions.
+        """
         test_files = []
         test_dirs = list(self._project_root.rglob("tests"))
         test_dirs += list(self._project_root.rglob("test"))
