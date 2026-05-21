@@ -15,15 +15,16 @@
 │  │  Analyzer    │  │  Verifier    │  │  Validator   │  │
 │  │              │  │              │  │              │  │
 │  │  - AST Parse │  │  - Local     │  │  - Syntax    │  │
-│  │  - Build     │  │  - Known     │  │  - Imports   │  │
-│  │  - Impact    │  │  - Similar   │  │  - Lint      │  │
-│  │  - Callers   │  │  - Doc URL   │  │  - Types     │  │
+│  │  - tree-sitter│ │  - Known     │  │  - Imports   │  │
+│  │  - Build     │  │  - Similar   │  │  - Lint      │  │
+│  │  - Impact    │  │  - Doc URL   │  │  - Types     │  │
+│  │  - Callers   │  │              │  │              │  │
 │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  │
 │         │                 │                 │          │
 │  ┌──────▼───────┐  ┌──────▼───────┐  ┌──────▼───────┐  │
 │  │  SQLite DB   │  │  LRU Cache   │  │  subprocess  │  │
 │  │  (nodes/     │  │  (256        │  │  (ruff/      │  │
-│  │   edges)     │  │  entries)    │  │   mypy)      │  │
+│  │   edges)     │  │  entries)    │  │   mypy/tsc)  │  │
 │  └──────────────┘  └──────────────┘  └──────────────┘  │
 │                                                          │
 │  ┌──────────────────────────────────────────────────┐   │
@@ -40,8 +41,10 @@
 
 ### AST-Powered Analysis
 - Parses Python files using the built-in `ast` module
-- Extracts functions, classes, methods, and call relationships
+- Parses TypeScript/JavaScript files using `tree-sitter` (TypeScript + TSX languages)
+- Extracts functions, classes, methods, interfaces, type aliases, enums, and call relationships
 - Supports cross-file call tracking via graph database
+- TypeScript-specific: extends/implements relationships, decorator tracking, property signatures
 
 ### SQLite Graph Database
 - Persistent storage with WAL mode for concurrent access
@@ -60,11 +63,10 @@
 - Similarity matching for typos
 
 ### Sandbox Validation
-- Syntax checking via AST parsing
-- Import verification
-- Linting with `ruff`
-- Type checking with `mypy`
+- **Python**: Syntax checking via AST parsing, import verification, linting with `ruff`, type checking with `mypy`
+- **TypeScript/JavaScript**: Syntax checking via `tsc`, linting with `eslint`, type checking via `tsc --noEmit`
 - Selective check execution
+- Auto-detects language from file extension
 
 ### Skill Management
 - GitHub-based skill repository
@@ -77,7 +79,8 @@
 
 | Operation | Avg Duration | Cached |
 |-----------|-------------|--------|
-| Full graph build | ~4-5s | SQLite |
+| Full graph build (Python) | ~4-5s | SQLite |
+| Full graph build (TypeScript) | ~3-4s | SQLite |
 | File graph build | ~100ms | SQLite |
 | Impact analysis | ~50ms | LRU |
 | Find callers | ~30ms | SQLite |

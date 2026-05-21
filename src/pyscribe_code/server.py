@@ -16,6 +16,7 @@ from pyscribe_code.managers.api_verifier import APIVerifier
 from pyscribe_code.managers.graph_analyzer import GraphAnalyzer
 from pyscribe_code.managers.sandbox_validator import SandboxValidator
 from pyscribe_code.managers.skill_manager import SkillManager
+from pyscribe_code.managers.ts_sandbox_validator import TSSandboxValidator
 from pyscribe_core.config import PyScribeConfig
 from pyscribe_core.errors import PyScribeError
 
@@ -31,6 +32,7 @@ class CodeContext:
     api_verifier: APIVerifier
     skill_manager: SkillManager
     sandbox_validator: SandboxValidator
+    ts_sandbox_validator: TSSandboxValidator
     project_root: Path
 
 
@@ -44,6 +46,7 @@ TOOLS: list[Tool] = [
                 "scope": {"type": "string", "description": "Analysis scope: 'full' (entire project), 'file' (single file), 'module' (directory)", "enum": ["full", "file", "module"]},
                 "path": {"type": "string", "description": "Specific file or directory path (required for file/module scope)", "maxLength": 500},
                 "force_rebuild": {"type": "boolean", "description": "Force rebuild even if cached (default: false)"},
+                "language": {"type": "string", "description": "Programming language: 'python', 'typescript', 'javascript'. Auto-detected if not provided.", "enum": ["python", "typescript", "javascript"]},
             },
             "additionalProperties": False,
         },
@@ -144,15 +147,17 @@ TOOLS: list[Tool] = [
     ),
     Tool(
         name="sandbox-validate",
-        description="ALWAYS call this before writing Python code to disk. Validates syntax, imports, lint, types, and deprecations. If can_write is false, fix reported issues before writing.",
+        description="ALWAYS call this before writing code to disk. Validates syntax, imports, lint, types, and deprecations. If can_write is false, fix reported issues before writing.",
         inputSchema={
             "type": "object",
             "properties": {
-                "code": {"type": "string", "description": "The Python code to validate"},
-                "file_path": {"type": "string", "description": "Intended file path, used for import resolution"},
-                "python_version": {"type": "string", "description": "Target Python version, e.g. '3.12'"},
+                "code": {"type": "string", "description": "The code to validate"},
+                "file_path": {"type": "string", "description": "Intended file path, used for import resolution and language detection"},
+                "language": {"type": "string", "description": "Programming language: 'python' (default), 'typescript', 'javascript'", "enum": ["python", "typescript", "javascript"]},
+                "python_version": {"type": "string", "description": "Target Python version, e.g. '3.12' (Python only)"},
                 "checks": {"type": "array", "items": {"type": "string"}, "description": "Which checks to run. Default: all"},
-                "dependencies": {"type": "array", "items": {"type": "string"}, "description": "List of import names to verify exist"},
+                "dependencies": {"type": "array", "items": {"type": "string"}, "description": "List of import names to verify exist (Python only)"},
+                "ts_config": {"type": "object", "description": "TypeScript compiler options (TypeScript only)"},
             },
             "required": ["code"],
             "additionalProperties": False,
@@ -227,11 +232,13 @@ async def handle_analyze_codebase_graph(ctx: CodeContext, args: dict[str, Any]) 
     scope = args.get("scope", "full")
     path = args.get("path", "")
     force_rebuild = args.get("force_rebuild", False)
+    language = args.get("language", "")
 
     result = ctx.graph_analyzer.build_graph(
         scope=scope,
         path=path if path else None,
         force_rebuild=force_rebuild,
+        language=language if language else None,
     )
 
     if "error" in result:
@@ -490,20 +497,33 @@ async def handle_list_installed_skills(ctx: CodeContext, args: dict[str, Any]) -
 async def handle_sandbox_validate(ctx: CodeContext, args: dict[str, Any]) -> str:
     code = args.get("code", "")
     file_path = args.get("file_path", "")
+    language = args.get("language", "")
     python_version = args.get("python_version", "")
     checks = args.get("checks")
     dependencies = args.get("dependencies")
+    ts_config = args.get("ts_config")
 
     if not code:
         raise PyScribeError("'code' parameter is required", recoverable=True)
 
-    result = ctx.sandbox_validator.validate(
-        code=code,
-        file_path=file_path,
-        python_version=python_version if python_version else None,
-        checks=checks,
-        dependencies=dependencies,
-    )
+    if not language:
+        language = _detect_language_from_path(file_path)
+
+    if language in ("typescript", "javascript"):
+        result = ctx.ts_sandbox_validator.validate(
+            code=code,
+            file_path=file_path,
+            checks=checks,
+            ts_config=ts_config,
+        )
+    else:
+        result = ctx.sandbox_validator.validate(
+            code=code,
+            file_path=file_path,
+            python_version=python_version if python_version else None,
+            checks=checks,
+            dependencies=dependencies,
+        )
 
     lines = [
         f"Sandbox Validation: {result['file_path']}",
@@ -523,3 +543,14 @@ async def handle_sandbox_validate(ctx: CodeContext, args: dict[str, Any]) -> str
         lines.append("")
 
     return "\n".join(lines)
+
+
+def _detect_language_from_path(file_path: str) -> str:
+    if not file_path:
+        return "python"
+    path = Path(file_path)
+    if path.suffix in {".ts", ".tsx"}:
+        return "typescript"
+    if path.suffix in {".js", ".jsx"}:
+        return "javascript"
+    return "python"
