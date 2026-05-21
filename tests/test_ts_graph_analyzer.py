@@ -14,7 +14,17 @@ from pyscribe_code.managers.graph_analyzer import GraphAnalyzer
 
 @pytest.fixture
 def sample_ts_project():
-    """Create a temporary project with multiple TypeScript files."""
+    """
+    Create a temporary TypeScript project with three files and yield its directory path.
+    
+    The project contains:
+    - types.ts: exports `User` interface, `UserId` type alias, and `Role` enum.
+    - service.ts: defines `UserService` with `getUser`/`createUser` methods and exports `formatUser`.
+    - main.ts: imports `UserService` and `Role`, constructs a service instance, and invokes `main()`.
+    
+    Returns:
+        Path: Path to the temporary project directory.
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
         path = Path(tmpdir)
 
@@ -73,7 +83,16 @@ main();
 
 @pytest.fixture
 def sample_js_project():
-    """Create a temporary project with JavaScript files."""
+    """
+    Create a temporary JavaScript project directory for tests.
+    
+    Creates a temporary directory containing two files:
+    - `utils.js`: defines and exports a `helper(x)` function.
+    - `app.js`: requires `helper`, defines class `App` with a `process` method that calls `helper`, and exports `App`.
+    
+    Returns:
+        path (Path): Path to the temporary project root. The directory is removed when the fixture context exits.
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
         path = Path(tmpdir)
 
@@ -102,7 +121,15 @@ module.exports = App;
 
 @pytest.fixture
 def graph_db(tmp_path):
-    """Create a temporary graph database."""
+    """
+    Provide a temporary GraphDB instance backed by a SQLite file named `test_graph.sqlite` inside the given temporary directory.
+    
+    Parameters:
+        tmp_path (pathlib.Path): Temporary directory path provided by pytest where the database file will be created.
+    
+    Returns:
+        GraphDB: A GraphDB instance connected to the created SQLite file.
+    """
     db_path = tmp_path / "test_graph.sqlite"
     return GraphDB(db_path)
 
@@ -231,6 +258,11 @@ class TestGraphAnalyzerTypeScript:
     """Test high-level graph analysis for TypeScript projects."""
 
     def test_build_graph(self, sample_ts_project, tmp_path):
+        """
+        Builds a dependency graph from a sample TypeScript project and verifies basic node/edge counts.
+        
+        Asserts that the analyzer produces more than zero nodes and a non-negative edge count when building the full graph for the provided sample project fixture.
+        """
         db_path = tmp_path / "graph.sqlite"
         analyzer = GraphAnalyzer(sample_ts_project, db_path, language="typescript")
 
@@ -260,6 +292,11 @@ class TestGraphAnalyzerTypeScript:
         assert "transitive_dependents" in result
 
     def test_force_rebuild(self, sample_ts_project, tmp_path):
+        """
+        Verify that forcing a full graph rebuild produces the same total node count as a normal build.
+        
+        Asserts that calling build_graph(scope="full") and then build_graph(scope="full", force_rebuild=True) yields identical values for "total_nodes" in both results.
+        """
         db_path = tmp_path / "graph.sqlite"
         analyzer = GraphAnalyzer(sample_ts_project, db_path, language="typescript")
 
