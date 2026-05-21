@@ -40,6 +40,7 @@ class GraphAnalyzer:
         language: str | None = None,
     ) -> dict[str, Any]:
         target_language = language or self._language or self._detect_language()
+        self._language = target_language
         parser = self._get_parser(target_language)
 
         if force_rebuild:
@@ -117,8 +118,8 @@ class GraphAnalyzer:
 
     def _detect_language(self) -> str:
         py_files = list(self._project_root.rglob("*.py"))
-        ts_files = list(self._project_root.rglob("*.ts"))
-        js_files = list(self._project_root.rglob("*.js"))
+        ts_files = list(self._project_root.rglob("*.ts")) + list(self._project_root.rglob("*.tsx"))
+        js_files = list(self._project_root.rglob("*.js")) + list(self._project_root.rglob("*.jsx"))
 
         py_count = len(py_files)
         ts_count = len(ts_files)

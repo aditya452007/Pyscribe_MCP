@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -182,6 +183,10 @@ class TSSymbolVisitor:
         old_class = self._current_class
         self._current_class = class_name
 
+        for child in node.children:
+            if child.type == "decorator":
+                self._visit_decorator(child)
+
         body = node.child_by_field_name("body")
         if body:
             for child in body.children:
@@ -315,6 +320,11 @@ class TSSymbolVisitor:
 
     def _visit_decorator(self, node: tree_sitter.Node) -> None:
         call_node = node.child_by_field_name("expression")
+        if not call_node:
+            for child in node.children:
+                if child.type == "call_expression":
+                    call_node = child
+                    break
         if call_node:
             decorator_name = self._resolve_call_name(call_node)
             if decorator_name and self._current_class:
@@ -342,10 +352,11 @@ class TSSymbolVisitor:
                                         line_number=node.start_point.row + 1,
                                         signature=f"import {{ {imported_name} }}",
                                     ))
-            elif child.type == "string" and self._current_function:
+            elif child.type == "string":
                 module_name = child.text.decode("utf-8").strip("'\"")
+                source = self._current_function or "(module)"
                 self.edges.append(EdgeInfo(
-                    source=self._current_function or "(module)",
+                    source=source,
                     target=module_name,
                     edge_type="imports",
                     line_number=node.start_point.row + 1,
@@ -543,12 +554,16 @@ class TypeScriptASTParser:
         exclusions = exclude or self.exclude
         results = []
 
-        for ext in ALL_TS_JS_EXTENSIONS:
-            for file in path.rglob(f"*{ext}"):
-                if self._is_excluded(file, exclusions):
-                    continue
-                analysis = self.parse_file(file)
-                results.append(analysis)
+        for root, dirs, files in os.walk(path):
+            dirs[:] = [
+                d for d in dirs
+                if not self._is_excluded(Path(root) / d, exclusions)
+            ]
+            for filename in files:
+                file_path = Path(root) / filename
+                if file_path.suffix in ALL_TS_JS_EXTENSIONS:
+                    analysis = self.parse_file(file_path)
+                    results.append(analysis)
 
         return results
 

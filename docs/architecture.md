@@ -64,7 +64,7 @@
 
 ### Sandbox Validation
 - **Python**: Syntax checking via AST parsing, import verification, linting with `ruff`, type checking with `mypy`
-- **TypeScript/JavaScript**: Syntax checking via `tsc`, linting with `eslint`, type checking via `tsc --noEmit`
+- **TypeScript/JavaScript**: Syntax checking via `tsc --noEmit`, linting with `eslint --format json`, type checking via `tsc -p <generated tsconfig.json>` (with `noEmit: true`)
 - Selective check execution
 - Auto-detects language from file extension
 

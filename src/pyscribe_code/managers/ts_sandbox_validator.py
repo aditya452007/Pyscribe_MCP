@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import shutil
 import subprocess  # nosec B404
 import tempfile
@@ -159,7 +160,7 @@ class TSSandboxValidator:
             if temp_path:
                 Path(temp_path).unlink(missing_ok=True)
 
-        status = "warn" if issues else "pass"
+        status = "fail" if any(i["severity"] == "error" for i in issues) else ("warn" if issues else "pass")
         return {"check": "lint", "status": status, "issues": issues}
 
     def _check_types(
@@ -259,6 +260,12 @@ class TSSandboxValidator:
         return ".ts"
 
     def _has_tsc(self) -> bool:
+        local_tsc = self._project_root / "node_modules" / ".bin" / "tsc"
+        if local_tsc.exists() and os.access(local_tsc, os.X_OK):
+            return True
+        local_tsc_cmd = self._project_root / "node_modules" / ".bin" / "tsc.cmd"
+        if local_tsc_cmd.exists():
+            return True
         return shutil.which("tsc") is not None
 
     def _find_eslint(self) -> str | None:

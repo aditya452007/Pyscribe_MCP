@@ -280,7 +280,7 @@ class TestGraphAnalyzerTypeScript:
         analyzer = GraphAnalyzer(sample_js_project, db_path)
 
         lang = analyzer._detect_language()
-        assert lang in ("javascript", "typescript")
+        assert lang == "javascript"
 
 
 class TestGraphDBTypeScript:
