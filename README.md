@@ -7,17 +7,20 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.12%2B-blue?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.12+">
+  <img src="https://img.shields.io/badge/TypeScript-5.0%2B-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript 5.0+">
   <img src="https://img.shields.io/badge/MCP-Protocol-orange?style=for-the-badge&logo=mcp&logoColor=white" alt="MCP Protocol">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT License">
   <img src="https://img.shields.io/badge/Tools-9-purple?style=for-the-badge" alt="9 Tools">
-  <img src="https://img.shields.io/badge/Tests-35%2F35%20Passing-brightgreen?style=for-the-badge" alt="35/35 Tests Passing">
+  <img src="https://img.shields.io/badge/Tests-162%2F162%20Passing-brightgreen?style=for-the-badge" alt="162/162 Tests Passing">
 </p>
 
 ---
 
 ## What is PyScribe Code MCP?
 
-PyScribe Code is a **Model Context Protocol (MCP) server** that gives AI coding agents (Cursor, Claude Code, Windsurf, Cline, etc.) deep code understanding capabilities. It analyzes your codebase using AST parsing, builds call graphs, performs impact analysis, verifies API symbols, validates code in a sandbox, and manages reusable skills.
+PyScribe Code is a **Model Context Protocol (MCP) server** that gives AI coding agents (Cursor, Claude Code, Windsurf, Cline, etc.) deep code understanding capabilities. It analyzes your codebase using AST parsing (Python via `ast`, TypeScript/JavaScript via `tree-sitter`), builds call graphs, performs impact analysis, verifies API symbols, validates code in a sandbox, and manages reusable skills.
+
+**Supported languages:** Python (.py), TypeScript (.ts, .tsx), JavaScript (.js, .jsx)
 
 **Think of it as giving your AI agent X-ray vision into your codebase.**
 

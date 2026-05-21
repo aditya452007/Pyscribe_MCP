@@ -14,6 +14,7 @@ from pyscribe_code.managers.api_verifier import APIVerifier
 from pyscribe_code.managers.graph_analyzer import GraphAnalyzer
 from pyscribe_code.managers.sandbox_validator import SandboxValidator
 from pyscribe_code.managers.skill_manager import SkillManager
+from pyscribe_code.managers.ts_sandbox_validator import TSSandboxValidator
 from pyscribe_code.server import CodeContext, create_server
 from pyscribe_core.config import PyScribeConfig
 
@@ -50,6 +51,7 @@ async def run_server(config_path: Path, project_root: Path) -> None:
     skill_manager = SkillManager(config, skills_dir)
     api_verifier = APIVerifier(project_root)
     sandbox_validator = SandboxValidator(project_root=project_root)
+    ts_sandbox_validator = TSSandboxValidator(project_root=project_root)
 
     ctx = CodeContext(
         config=config,
@@ -57,6 +59,7 @@ async def run_server(config_path: Path, project_root: Path) -> None:
         api_verifier=api_verifier,
         skill_manager=skill_manager,
         sandbox_validator=sandbox_validator,
+        ts_sandbox_validator=ts_sandbox_validator,
         project_root=project_root,
     )
 
